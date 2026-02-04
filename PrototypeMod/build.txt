@@ -1,0 +1,3 @@
+displayName = Prototype Mod
+author = Trevor Wallace
+version = 0.1
