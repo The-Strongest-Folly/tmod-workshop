@@ -21,5 +21,12 @@ namespace PrototypeMod.Content.Items.Materials // Where your code is located
             Item.value = 1100; // Item sell price in copper coins
             Item.rare = ItemRarityID.Orange; // The color of item's name in game. Check https://terraria.wiki.gg/wiki/Rarity
         }
+
+        public override void AddRecipes()
+		{
+			CreateRecipe() // Debug recipe, remove before release
+				.AddIngredient(ItemID.DirtBlock, 1)
+				.Register();
+		}
     }
 }

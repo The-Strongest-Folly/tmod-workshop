@@ -1,20 +1,26 @@
 using PrototypeMod.Content.Items; // Access the Items folder
+using PrototypeMod.Content.Buffs; // Access the Buffs folder
 using Terraria;
 using Terraria.GameContent.Creative;
 using Terraria.ID;
 using Terraria.ModLoader;
 
-namespace PrototypeMod.Content.Items.Weapons.Melee
+using Microsoft.Xna.Framework; // tMod uses MonoGame, a continuation of Microsoft XNA that uses the same namespaces
+
+namespace PrototypeMod.Content.Items.Weapons.Melee // Location for the code
 {
 	// This is a basic item template.
 	// Please see tModLoader's ExampleMod for every other example:
 	// https://github.com/tModLoader/tModLoader/tree/stable/ExampleMod
 	public class Ragnell : ModItem
 	{
+		private bool aetherProc = false; // Bool value for when the Sol portion of Aether procs
+		private int tempDefense = 0; // Defense value to revert to once Aether finishes
+
 		// The Display Name and Tooltip of this item can be edited in the 'Localization/en-US_Mods.PrototypeMod.hjson' file.
 		public override void SetStaticDefaults()
 		{
-			CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 1;
+			CreativeItemSacrificesCatalog.Instance.SacrificeCountNeededByItemId[Type] = 1; // Item num needed for Journey mode research
 		}
 
 		public override void SetDefaults()
@@ -22,30 +28,71 @@ namespace PrototypeMod.Content.Items.Weapons.Melee
 			// Visual properties
 			Item.width = 40;
 			Item.height = 40;
-			Item.scale = 1f;
-			Item.rare = ItemRarityID.Orange;
+			Item.scale = 1.5f; // Item size
+			Item.rare = ItemRarityID.Orange; // Color for items for directly before the boss "Wall of Flesh"
 
+			// Combat properties
 			Item.damage = 50;
-			Item.DamageType = DamageClass.Melee;
+			Item.DamageType = DamageClass.Melee; // What type of damage item is deals, Melee, Ranged, Magic, Summon, Generic (takes bonuses from all damage multipliers), Default (doesn't take bonuses from any damage multipliers)
+            
+			// useTime and useAnimation often use the same value, but there are examples where they don't use the same values
+			Item.useTime = 30; // How long the swing hitbox lasts in ticks (60 ticks = 1 second)
+			Item.useAnimation = 30; // How long the swing animation lasts in ticks (60 ticks = 1 second)
+			Item.knockBack = 6f; // How far the enemies hit get launched; 20 is the maximum value
+			Item.autoReuse = false; // Whether the item can auto swing by holding the attack button
 			
-			Item.useTime = 20;
-			Item.useAnimation = 20;
-			Item.knockBack = 6;
-			Item.autoReuse = true;
-			
-			Item.value = Item.buyPrice(silver: 1);
-			Item.useStyle = ItemUseStyleID.Swing;
-			Item.UseSound = SoundID.Item1;
+			Item.value = Item.buyPrice(gold: 10, silver: 1) / 2; // Item sell price + buy price (buy price seems to return value in copper)
+			Item.useStyle = ItemUseStyleID.Swing; // How the item is held
+			Item.UseSound = SoundID.Item1; // The sound used (can be default or imported)
 		}
 
 		public override void AddRecipes()
 		{
 			CreateRecipe()
-				.AddIngredient<Items.Materials.Asherite>(15)
+				.AddIngredient<Materials.Asherite>(15)
 				.AddIngredient(ItemID.Emerald, 1)
 				.AddIngredient(ItemID.PlatinumBar, 5)
 				.AddTile(TileID.Anvils)
 				.Register();
+
+			CreateRecipe() // Debug recipe, remove before release
+				.AddIngredient(ItemID.DirtBlock, 1)
+				.Register();
+		}
+
+		public override void MeleeEffects(Player player, Rectangle hitbox)
+		{
+			if (aetherProc) // Occurs when Aether is activated
+			{
+				// ...spawning particle, referred to as "dust"
+				Dust.NewDust(new Vector2(hitbox.X, hitbox.Y), // Position to spawn
+					hitbox.Width, hitbox.Height, //Width and height of hitbox; area to spawn dust in
+					DustID.BlueTorch, // Types of default dust: https://terraria.wiki.gg/wiki/Dust_IDs
+					0, 0, // Speed X and Speed Y of dust (speed will have "some randomization", unsure if it's additive or multiplicative)
+					125); // Dust transparency from 0 to 255
+			}
+		}
+
+		public override void ModifyHitNPC(Player player, NPC target, ref int damage, ref float knockback, ref bool crit) 
+		{
+			if (Main.rand.NextBool(5)) // 1/5 chance to proc Aether
+			{
+				tempDefense = target.defense; // Assign to avoid resetting other active defense debuffs
+				target.defense = Math.Clamp(target.defense - (int)(target.defDefense / 2f), 0, target.defDefense); // Luna
+				aetherProc = true; // Set to true for Sol in OnHitNPC
+			} else
+			{
+				aetherProc = false;
+			}
+		}
+
+		public override void OnHitNPC(Player player, NPC target, NPC.HitInfo hit, int damageDone) // You can attack an entity without overriding this, but for status ailments/buffs or something that needs the final damage calculation override
+		{
+			if(aetherProc)
+			{
+				player.Heal(damageDone); // Sol
+				target.defense = tempDefense; // Revert defense to pre-Aether value
+			}
 		}
 	}
 }

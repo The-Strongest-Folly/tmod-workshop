@@ -3,16 +3,11 @@
 Items: {
 	Ragnell: {
 		DisplayName: Ragnell
-		Tooltip:
-			'''
-			Template of an item
-			Replacing this tooltip is duty 
-			It's snowing on Mt.Fuji
-			'''
+		Tooltip: "The perfect weapon for fighting for your friends."
 	}
 
 	Asherite: {
 		DisplayName: Asherite
-		Tooltip: ""
+		Tooltip: "An ore blessed by the goddess Ashera."
 	}
 }
