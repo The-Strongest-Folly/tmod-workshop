@@ -2,12 +2,17 @@
 
 Items: {
 	Ragnell: {
-		DisplayName: "Ragnell"
+		DisplayName: Ragnell
 		Tooltip:
 			'''
 			Template of an item
 			Replacing this tooltip is duty 
 			It's snowing on Mt.Fuji
 			'''
+	}
+
+	Asherite: {
+		DisplayName: Asherite
+		Tooltip: ""
 	}
 }
