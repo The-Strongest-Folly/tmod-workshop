@@ -1,9 +1,9 @@
 using PrototypeMod.Content.Items; // Access the Items folder
-using PrototypeMod.Content.Buffs; // Access the Buffs folder
 using Terraria;
 using Terraria.GameContent.Creative;
 using Terraria.ID;
 using Terraria.ModLoader;
+using System;
 
 using Microsoft.Xna.Framework; // tMod uses MonoGame, a continuation of Microsoft XNA that uses the same namespaces
 
@@ -15,7 +15,6 @@ namespace PrototypeMod.Content.Items.Weapons.Melee // Location for the code
 	public class Ragnell : ModItem
 	{
 		private bool aetherProc = false; // Bool value for when the Sol portion of Aether procs
-		private int tempDefense = 0; // Defense value to revert to once Aether finishes
 
 		// The Display Name and Tooltip of this item can be edited in the 'Localization/en-US_Mods.PrototypeMod.hjson' file.
 		public override void SetStaticDefaults()
@@ -28,7 +27,7 @@ namespace PrototypeMod.Content.Items.Weapons.Melee // Location for the code
 			// Visual properties
 			Item.width = 40;
 			Item.height = 40;
-			Item.scale = 1.5f; // Item size
+			Item.scale = 1.25f; // Item size
 			Item.rare = ItemRarityID.Orange; // Color for items for directly before the boss "Wall of Flesh"
 
 			// Combat properties
@@ -50,35 +49,20 @@ namespace PrototypeMod.Content.Items.Weapons.Melee // Location for the code
 		{
 			CreateRecipe()
 				.AddIngredient<Materials.Asherite>(15)
-				.AddIngredient(ItemID.Emerald, 1)
-				.AddIngredient(ItemID.PlatinumBar, 5)
+				.AddIngredient(ItemID.Emerald, 3)
+				.AddRecipeGroup("GoldBar", 5)
 				.AddTile(TileID.Anvils)
 				.Register();
 
-			CreateRecipe() // Debug recipe, remove before release
-				.AddIngredient(ItemID.DirtBlock, 1)
-				.Register();
 		}
 
-		public override void MeleeEffects(Player player, Rectangle hitbox)
-		{
-			if (aetherProc) // Occurs when Aether is activated
-			{
-				// ...spawning particle, referred to as "dust"
-				Dust.NewDust(new Vector2(hitbox.X, hitbox.Y), // Position to spawn
-					hitbox.Width, hitbox.Height, //Width and height of hitbox; area to spawn dust in
-					DustID.BlueTorch, // Types of default dust: https://terraria.wiki.gg/wiki/Dust_IDs
-					0, 0, // Speed X and Speed Y of dust (speed will have "some randomization", unsure if it's additive or multiplicative)
-					125); // Dust transparency from 0 to 255
-			}
-		}
-
-		public override void ModifyHitNPC(Player player, NPC target, ref int damage, ref float knockback, ref bool crit) 
+		public override void ModifyHitNPC(Player player, NPC target, ref NPC.HitModifiers modifiers) 
 		{
 			if (Main.rand.NextBool(5)) // 1/5 chance to proc Aether
 			{
-				tempDefense = target.defense; // Assign to avoid resetting other active defense debuffs
-				target.defense = Math.Clamp(target.defense - (int)(target.defDefense / 2f), 0, target.defDefense); // Luna
+				// Ignore half of the target's base defense
+        		modifiers.ArmorPenetration += target.defDefense / 2; // Luna
+
 				aetherProc = true; // Set to true for Sol in OnHitNPC
 			} else
 			{
@@ -90,8 +74,17 @@ namespace PrototypeMod.Content.Items.Weapons.Melee // Location for the code
 		{
 			if(aetherProc)
 			{
+				// ...spawning particle, referred to as "dust"
+				if (aetherProc)
+				{
+					Dust.NewDust(target.position, // Position to spawn
+						target.width, target.height, //Width and height of hitbox; area to spawn dust in
+						DustID.BlueTorch, // Types of default dust: https://terraria.wiki.gg/wiki/Dust_IDs
+						0.5f, 0.5f, // Speed X and Speed Y of dust (speed will have "some randomization", unsure if it's additive or multiplicative)
+						0); // Dust transparency from 0 to 255
+				}
 				player.Heal(damageDone); // Sol
-				target.defense = tempDefense; // Revert defense to pre-Aether value
+				aetherProc = false; // Turn off aetherProc to prevent dust system from triggering
 			}
 		}
 	}

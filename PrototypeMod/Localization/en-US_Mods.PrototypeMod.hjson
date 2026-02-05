@@ -3,11 +3,11 @@
 Items: {
 	Ragnell: {
 		DisplayName: Ragnell
-		Tooltip: "The perfect weapon for fighting for your friends."
+		Tooltip: The perfect weapon for fighting for your friends.
 	}
 
 	Asherite: {
 		DisplayName: Asherite
-		Tooltip: "An ore blessed by the goddess Ashera."
+		Tooltip: An ore blessed by the goddess Ashera.
 	}
 }
