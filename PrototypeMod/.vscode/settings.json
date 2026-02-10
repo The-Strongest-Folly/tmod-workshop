@@ -1,0 +1,4 @@
+{
+  "omnisharp.useModernNet": true,
+  "omnisharp.sdkPath": "C:/Program Files/dotnet/sdk/6.0.428"
+}

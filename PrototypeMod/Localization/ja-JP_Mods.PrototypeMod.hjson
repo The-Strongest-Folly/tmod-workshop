@@ -1,0 +1,17 @@
+# This file will automatically update with entries for new content after a build and reload.
+
+Items: {
+	Ragnell: {
+		DisplayName: ラグネル
+		Tooltip: 
+		'''
+		20%： ダメージは同等にHPを癒すそして、エネミーの防御を50%に無視する
+		友達のために戦いの完璧武器です。
+		'''
+	}
+
+	Asherite: {
+		DisplayName: アスタリアム
+		Tooltip: 女神のアスタルテに鉱石を祝福された。
+	}
+}

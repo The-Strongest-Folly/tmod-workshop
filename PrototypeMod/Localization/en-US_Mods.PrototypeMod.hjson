@@ -3,7 +3,11 @@
 Items: {
 	Ragnell: {
 		DisplayName: Ragnell
-		Tooltip: The perfect weapon for fighting for your friends.
+		Tooltip: 
+		'''
+		20% chance to regain health equivalent to damage delt and ignore 50% of enemy's defense
+		The perfect weapon for fighting for your friends.
+		'''
 	}
 
 	Asherite: {
