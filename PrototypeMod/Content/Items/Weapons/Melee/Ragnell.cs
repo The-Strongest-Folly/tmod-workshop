@@ -50,7 +50,7 @@ namespace PrototypeMod.Content.Items.Weapons.Melee // Location for the code
 			CreateRecipe()
 				.AddIngredient<Materials.Asherite>(15)
 				.AddIngredient(ItemID.Emerald, 3)
-				.AddRecipeGroup("GoldBar", 5)
+				.AddRecipeGroup("Any Gold Bar", 5)
 				.AddTile(TileID.Anvils)
 				.Register();
 
@@ -81,7 +81,7 @@ namespace PrototypeMod.Content.Items.Weapons.Melee // Location for the code
 						target.width, target.height, //Width and height of hitbox; area to spawn dust in
 						DustID.BlueTorch, // Types of default dust: https://terraria.wiki.gg/wiki/Dust_IDs
 						0.5f, 0.5f, // Speed X and Speed Y of dust (speed will have "some randomization", unsure if it's additive or multiplicative)
-						0); // Dust transparency from 0 to 255
+						125); // Dust transparency from 0 to 255; 0 = transparent
 				}
 				player.Heal(damageDone); // Sol
 				aetherProc = false; // Turn off aetherProc to prevent dust system from triggering
