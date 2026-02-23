@@ -113,28 +113,46 @@ namespace PrototypeMod.Content.NPCs
 
 		public override void OnHitPlayer(Player target, Player.HurtInfo hurtInfo) {
 			// TODO: Make the Black Knight despawn on killing a player. Make sure he cannot take lunch money!
+			if(target.statLife <= 0)
+			{
+				NPC.ai[0] = 0; // Set state to wander to stop attacks
+				NPC.Teleport(NPC.position,0,7); // Teleport to current position to make it look like teleporting away
+				NPC.active = false; // Deactivate NPC
+        		NPC.netUpdate = true; // Sync with multiplayer
+			}
 			// TODO: Implement luna proc either here or in AI
 		}
 
-		public override void ModifyIncomingHit(ref NPC.HitModifiers modifiers) {
-			if (modifiers.DamageType.CountsAsClass(DamageClass.Magic)) {
-				// This example shows how PartyZombie reduces magic damage by 75%. We use FinalDamage here rather than SourceDamage since we are affecting how the npc reacts to the damage.
-				// Conceptually, the source dealing the damage isn't interpreted as weaker, but rather this NPC has a resistance to this damage source.
-				modifiers.FinalDamage *= 0.25f;
+		public override void ModifyHitPlayer(NPC npc, Player target, ref int damage, ref bool crit)
+		{
+			if (Main.rand.NextBool(2)) // 1/2 chance to proc Luna
+			{
+				// Ignore half of the target's base defense
+        		damage += (int)(target.defDefense / 2); // Luna
+				Dust.NewDust(target.position, // Position to spawn
+						target.width, target.height, //Width and height of hitbox; area to spawn dust in
+						DustID.GemRuby, // Types of default dust: https://terraria.wiki.gg/wiki/Dust_IDs
+						0.5f, 0.5f, // Speed X and Speed Y of dust (speed will have "some randomization", unsure if it's additive or multiplicative)
+						0); // Dust transparency from 0 to 255
 			}
+		}
+
+		public override void ModifyIncomingHit(ref NPC.HitModifiers modifiers) {
+			// Black Knight's armor is blessed by the goddess Ashera. While in his original game, this would mean that he could not be damaged unless attacked with the Ragnell sword, that would be very problematic here! Instead, he'll reduce all incoming damage by 50%. The effect is similar to current meta-defining skills in the mobile game Fire Emblem Heroes, where he also appears.
+			modifiers.FinalDamage *= 0.5f;
 		}
 
 		public override void FindFrame(int frameHeight)
 		{
 			// Count up and change the frame appropriately
-			Main.npcFrameCounter += 1.0f;
+			NPC.npcFrameCounter++;
 
-			if(Main.npcFrameCounter >= 3.0f)
+			if(Main.npcFrameCounter >= 6.0f)
 			{
-				if (frameHeight >= 240) // TODO: Change this
+				if (frameHeight >= 360)
 					NPC.frame.y = 0;
 				else
-					NPC.frame.y += frameDimension;
+					NPC.frame.y += frameHeight;
 			}
 
 		}
@@ -146,17 +164,17 @@ namespace PrototypeMod.Content.NPCs
             {
                 case 0: // Wander State
                     NPC.velocity.X = 0.5f;
-                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 30f * BLOCK)
+                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 30f * BLOCK) // If a player is 30 blocks away or less:
                     {
-                        NPC.ai[1] = 0f;
-                        NPC.ai[0] = 1f;
+                        NPC.ai[1] = 0f; // Reset warp timer
+                        NPC.ai[0] = 1f; // Set state to Attack State
                     }
                     break;
                 case 1: // Attack State
                     NPC.velocity.X = 1.0f;
-                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) > 40f * BLOCK)
+                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) > 40f * BLOCK) // If the target gets more than 40 blocks away:
                     {
-                        NPC.ai[0] = 0f;
+                        NPC.ai[0] = 0f; // Set state to Wander State
                     }
                     /** Attack types:
                     * If close: attack with Alondite (cooldown 0.75 seconds)
@@ -165,13 +183,12 @@ namespace PrototypeMod.Content.NPCs
                     if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 5f * BLOCK)
                     {
                         // Alondite attack code
-
                     } else
                     {
                         NPC.ai[1]++; // Terraria operates at a constant 60fps and counts frames for time. Therefore, 60 = 1 second.
                         if (NPC.ai[1] >= 900f)
                         {
-                            // Teleport Black Knight to player
+                            // Attempt to teleport Black Knight to player
                             if (NPC.AI_AttemptToFindTeleportSpot(Main.player[NPC.target].Center, // Source for teleport
 							0 * BLOCK, 5 * BLOCK, // Displacement from source
 							3 * BLOCK, // Radius from target that NPC can spawn in
