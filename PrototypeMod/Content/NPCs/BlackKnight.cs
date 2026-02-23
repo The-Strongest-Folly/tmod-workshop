@@ -6,14 +6,21 @@ using Terraria.GameContent.ItemDropRules;
 using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.ModLoader.Utilities;
+using PrototypeMod.Content.Items;
+using PrototypeMod.Content.Items.Materials;
+
+// Reminder: Assume distance = pixels; 1 block = 16 x 16 pixels
 
 namespace PrototypeMod.Content.NPCs
 {
 	// To learn how to further adapt vanilla NPC behaviors, see https://github.com/tModLoader/tModLoader/wiki/Advanced-Vanilla-Code-Adaption#example-npc-npc-clone-with-modified-projectile-hoplite
 	public class BlackKnight : ModNPC
 	{
+		const int RADIUS = 72;
+		const int BLOCK = 32; // Block length/height; multiply by this to convert pixels to blocks
+
 		public override void SetStaticDefaults() {
-			Main.npcFrameCount[Type] = Main.npcFrameCount[8]; // Learning, will document when fully understood
+			Main.npcFrameCount[Type] = 6; // static int[] that determines number of animation frames the NPC has
 
 			NPCID.Sets.ShimmerTransformToNPC[Type] = -1; // Defaults to -1 anyway, but this indicates who the NPC transforms to in Shimmer. There is also a ShimmerTransformToItem[Type] value which turns an NPC into the indicated item.
 
@@ -26,61 +33,52 @@ namespace PrototypeMod.Content.NPCs
 		public override void SetDefaults() {
 			NPC.width = 48;
 			NPC.height = 72;
-			NPC.damage = 40;
-			NPC.defense = 30;
-			NPC.lifeMax = 800;
+			NPC.damage = 60;
+			NPC.defense = 20;
+			NPC.lifeMax = 2000;
 			NPC.HitSound = SoundID.NPCHit4;
 			NPC.DeathSound = SoundID.NPCDeath1;
 			NPC.value = 10000f;
 			NPC.knockBackResist = 0.01f;
 			NPC.aiStyle = NPCAIStyleID.Fighter; // Fighter AI, important to choose the aiStyle that matches the NPCID that we want to mimic
+			// NPC.ai[0] - State; NPC.ai[1] - Time since Alondite attack while in Attack State
+
+			NPC.teleportTime = 90f; // Delay for a teleport to take place
+
+			NPC.netUpdate = true; // Need this for the 1/5 Alondite prock
 
             NPC.despawnEncouraged = false; // Should prevent Black Knight from naturally despawning
             NPC.GravityIgnoresLiquid = true; // Black Knight is heavily armored, so he should not float
 
-			// AIType = NPCID.Zombie; // Use vanilla zombie's type when executing AI code. (This also means it will try to despawn during daytime)
-			// AnimationType = NPCID.Zombie; // Use vanilla zombie's type when executing animation code. Important to also match Main.npcFrameCount[NPC.type] in SetStaticDefaults.
-			// Banner = Item.NPCtoBanner(NPCID.Zombie); // Makes this NPC get affected by the normal zombie banner.
-			// BannerItem = Item.BannerToItem(Banner); // Makes kills of this NPC go towards dropping the banner it's associated with.
+			Banner = Item.NPCtoBanner(NPCID.Paladin); // Makes this NPC get affected by the normal paladin banner.
+			BannerItem = Item.BannerToItem(Banner); // Makes kills of this NPC go towards dropping the banner it's associated with.
 			// SpawnModBiomes = [ModContent.GetInstance<ExampleSurfaceBiome>().Type]; // Associates this NPC with the ExampleSurfaceBiome in Bestiary
 		}
 
 		public override void ModifyNPCLoot(NPCLoot npcLoot) {
-			// Since Party Zombie is essentially just another variation of Zombie, we'd like to mimic the Zombie drops.
-			// To do this, we can either (1) copy the drops from the Zombie directly or (2) just recreate the drops in our code.
-			// (1) Copying the drops directly means that if Terraria updates and changes the Zombie drops, your ModNPC will also inherit the changes automatically.
-			// (2) Recreating the drops can give you more control if desired but requires consulting the wiki, bestiary, or source code and then writing drop code.
-
-			// (1) This example shows copying the drops directly. For consistency and mod compatibility, we suggest using the smallest positive NPCID when dealing with npcs with many variants and shared drop pools.
-			var zombieDropRules = Main.ItemDropsDB.GetRulesForNPCID(NPCID.Zombie, false); // false is important here
-			foreach (var zombieDropRule in zombieDropRules) {
-				// In this foreach loop, we simple add each drop to the PartyZombie drop pool.
-				npcLoot.Add(zombieDropRule);
-			}
-
-			// (2) This example shows recreating the drops. This code is commented out because we are using the previous method instead.
-			// npcLoot.Add(ItemDropRule.Common(ItemID.Shackle, 50)); // Drop shackles with a 1 out of 50 chance.
-			// npcLoot.Add(ItemDropRule.Common(ItemID.ZombieArm, 250)); // Drop zombie arm with a 1 out of 250 chance.
-
-			// Finally, we can add additional drops. Many Zombie variants have their own unique drops: https://terraria.fandom.com/wiki/Zombie
-			npcLoot.Add(ItemDropRule.Common(ItemID.Confetti, 100)); // 1% chance to drop Confetti
+			npcLoot.Add(ItemDropRule.CommonDrop(ModContent.ItemType<Asherite>(), // Reference required for modded item drops
+			1, // Item chance denominator
+			5, 5, // Item drop min/max. Assumedly, each value in the range can occur equally.
+			1)); // Item chance numerator; currently 1/1 = 100% chance
 		}
 
 		public override float SpawnChance(NPCSpawnInfo spawnInfo) {
-			return SpawnCondition.OverworldNightMonster.Chance * 0.2f; // Spawn with 1/5th the chance of a regular zombie.
+			return SpawnCondition.OverworldNightMonster.Chance * NPC.downedQueenBee ? 0.01f : 0.0f; // Spawn with 1/100th the chance of a regular zombie if Queen Bee was killed.
 		}
 
 		public override void AI() {
-			if (NPC.wet) {
-				if (NPC.honeyWet) { // Removes the effects of honey's fall rate making the NPC fall normally in honey
-					NPC.GravityMultiplier /= NPC.GravityWetMultipliers[LiquidID.Honey];
-					NPC.MaxFallSpeedMultiplier /= NPC.MaxFallSpeedWetMultipliers[LiquidID.Honey];
-				}
-				else if (!NPC.lavaWet && !NPC.shimmerWet) { // Removes water falls speed effects, then adds honey falls speed effects, making the NPC fall at the honey rate in water
-					NPC.GravityMultiplier *= NPC.GravityWetMultipliers[LiquidID.Honey] / NPC.GravityWetMultipliers[LiquidID.Water];
-					NPC.MaxFallSpeedMultiplier *= NPC.MaxFallSpeedWetMultipliers[LiquidID.Honey] / NPC.MaxFallSpeedWetMultipliers[LiquidID.Water];
-				}
-			}
+			// Set to ignore liquids, so this should not matter
+
+			// if (NPC.wet) {
+			// 	if (NPC.honeyWet) { // Removes the effects of honey's fall rate making the NPC fall normally in honey
+			// 		NPC.GravityMultiplier /= NPC.GravityWetMultipliers[LiquidID.Honey];
+			// 		NPC.MaxFallSpeedMultiplier /= NPC.MaxFallSpeedWetMultipliers[LiquidID.Honey];
+			// 	}
+			// 	else if (!NPC.lavaWet && !NPC.shimmerWet) { // Removes water falls speed effects, then adds honey falls speed effects, making the NPC fall at the honey rate in water
+			// 		NPC.GravityMultiplier *= NPC.GravityWetMultipliers[LiquidID.Honey] / NPC.GravityWetMultipliers[LiquidID.Water];
+			// 		NPC.MaxFallSpeedMultiplier *= NPC.MaxFallSpeedWetMultipliers[LiquidID.Honey] / NPC.MaxFallSpeedWetMultipliers[LiquidID.Water];
+			// 	}
+			// }
 		}
 
 		public override void SetBestiary(BestiaryDatabase database, BestiaryEntry bestiaryEntry) {
@@ -90,7 +88,7 @@ namespace PrototypeMod.Content.NPCs
 				BestiaryDatabaseNPCsPopulator.CommonTags.SpawnConditions.Times.NightTime,
 
 				// Sets the description of this NPC that is listed in the bestiary.
-				new FlavorTextBestiaryInfoElement("Mods.ExampleMod.Bestiary.PartyZombie"),
+				new FlavorTextBestiaryInfoElement("Mods.PrototypeMod.Bestiary.BlackKnight"),
 
 				// By default the last added IBestiaryBackgroundImagePathAndColorProvider will be used to show the background image.
 				// The ExampleSurfaceBiome ModBiomeBestiaryInfoElement is automatically populated into bestiaryEntry.Info prior to this method being called
@@ -100,28 +98,22 @@ namespace PrototypeMod.Content.NPCs
 		}
 
 		public override void HitEffect(NPC.HitInfo hit) {
-			// Spawn confetti when this zombie is hit.
+			// // Spawn confetti when this zombie is hit.
 
-			for (int i = 0; i < 10; i++) {
-				int dustType = Main.rand.Next(139, 143);
-				var dust = Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, dustType);
+			// for (int i = 0; i < 10; i++) {
+			// 	int dustType = Main.rand.Next(139, 143);
+			// 	var dust = Dust.NewDustDirect(NPC.position, NPC.width, NPC.height, dustType);
 
-				dust.velocity.X += Main.rand.NextFloat(-0.05f, 0.05f);
-				dust.velocity.Y += Main.rand.NextFloat(-0.05f, 0.05f);
+			// 	dust.velocity.X += Main.rand.NextFloat(-0.05f, 0.05f);
+			// 	dust.velocity.Y += Main.rand.NextFloat(-0.05f, 0.05f);
 
-				dust.scale *= 1f + Main.rand.NextFloat(-0.03f, 0.03f);
-			}
+			// 	dust.scale *= 1f + Main.rand.NextFloat(-0.03f, 0.03f);
+			// }
 		}
 
 		public override void OnHitPlayer(Player target, Player.HurtInfo hurtInfo) {
-			// Here we can make things happen if this NPC hits a player via its hitbox (not projectiles it shoots, this is handled in the projectile code usually)
-			// Common use is applying buffs/debuffs:
-
-			int buffType = ModContent.BuffType<AnimatedBuff>();
-			// Alternatively, you can use a vanilla buff: int buffType = BuffID.Slow;
-
-			int timeToAdd = 5 * 60; // This makes it 5 seconds, one second is 60 ticks
-			target.AddBuff(buffType, timeToAdd);
+			// TODO: Make the Black Knight despawn on killing a player. Make sure he cannot take lunch money!
+			// TODO: Implement luna proc either here or in AI
 		}
 
 		public override void ModifyIncomingHit(ref NPC.HitModifiers modifiers) {
@@ -132,6 +124,21 @@ namespace PrototypeMod.Content.NPCs
 			}
 		}
 
+		public override void FindFrame(int frameHeight)
+		{
+			// Count up and change the frame appropriately
+			Main.npcFrameCounter += 1.0f;
+
+			if(Main.npcFrameCounter >= 3.0f)
+			{
+				if (frameHeight >= 240) // TODO: Change this
+					NPC.frame.y = 0;
+				else
+					NPC.frame.y += frameDimension;
+			}
+
+		}
+
         public override void AI()
         {
             // AI operates via state machine
@@ -139,7 +146,7 @@ namespace PrototypeMod.Content.NPCs
             {
                 case 0: // Wander State
                     NPC.velocity.X = 0.5f;
-                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 30f)
+                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 30f * BLOCK)
                     {
                         NPC.ai[1] = 0f;
                         NPC.ai[0] = 1f;
@@ -147,7 +154,7 @@ namespace PrototypeMod.Content.NPCs
                     break;
                 case 1: // Attack State
                     NPC.velocity.X = 1.0f;
-                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) > 40f)
+                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) > 40f * BLOCK)
                     {
                         NPC.ai[0] = 0f;
                     }
@@ -155,19 +162,32 @@ namespace PrototypeMod.Content.NPCs
                     * If close: attack with Alondite (cooldown 0.75 seconds)
                     * If too far from player to attack for 15 seconds: Warp Powder (teleport directly next to player and attack)
                     */
-                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 5f)
+                    if (Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 5f * BLOCK)
                     {
                         // Alondite attack code
+
                     } else
                     {
                         NPC.ai[1]++; // Terraria operates at a constant 60fps and counts frames for time. Therefore, 60 = 1 second.
                         if (NPC.ai[1] >= 900f)
                         {
                             // Teleport Black Knight to player
-                            if (NPC.AI_AttemptToFindTeleportSpot(ref Vector2(NPC.currentPosition)))
-                            NPC.Teleport
-                            // Reset timer
-                            NPC.ai[1] = 0f;
+                            if (NPC.AI_AttemptToFindTeleportSpot(Main.player[NPC.target].Center, // Source for teleport
+							0 * BLOCK, 5 * BLOCK, // Displacement from source
+							3 * BLOCK, // Radius from target that NPC can spawn in
+							72, // Distance to prevent telefragging (no overlaping entities in this radius that could be IK'd)
+							72, // Radius for checking solid blocks to prevent clipping
+							false, // "solidTileCheckCentered" may mean whether the solid tile check is centered on the target or the NPC
+							true // Determines if NPC can teleport onto air rather than a solid tile
+							)) 
+							{
+								NPC.Teleport(Main.player[NPC.target].Center + Vector2(0, 5 * BLOCK), // Teleport destination
+								0, // Default teleport
+								7 // Teleport with Demon Conch vfx
+								);
+								// Reset timer
+								NPC.ai[1] = 0f;
+							}
                         }
                     }
                     break;
