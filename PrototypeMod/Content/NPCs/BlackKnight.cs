@@ -18,7 +18,9 @@ namespace PrototypeMod.Content.NPCs
 	public class BlackKnight : ModNPC
 	{
 		const int RADIUS = 72;
-		const int BLOCK = 32; // Block length/height; multiply by this to convert pixels to blocks
+		const int BLOCK = 24; // Block length/height; multiply by this to convert pixels to blocks
+		const int FRAME_PLUS = 72; // Frame height to increment by
+		const int FRAME_LIMIT = FRAME_PLUS * (6 - 1);
 
 
 
@@ -35,7 +37,7 @@ namespace PrototypeMod.Content.NPCs
 
 		public override void SetDefaults() {
 			NPC.width = 48;
-			NPC.height = 72;
+			NPC.height = 48; // Hitbox height
 			NPC.damage = 60;
 			NPC.defense = 20;
 			NPC.lifeMax = 2000;
@@ -104,13 +106,14 @@ namespace PrototypeMod.Content.NPCs
 		}
 
 		public override void OnHitPlayer(Player target, Player.HurtInfo hurtInfo) {
-			if(target.statLife <= 0)
-			{
-				NPC.ai[0] = 0; // Set state to wander to stop attacks
-				NPC.Teleport(NPC.position,0,7); // Teleport to current position to make it look like teleporting away
-				NPC.active = false; // Deactivate NPC
-        		NPC.netUpdate = true; // Sync with multiplayer
-			}
+			// Commenting this code out until behavior is correct
+			// if(target.statLife <= 0)
+			// {
+			// 	NPC.ai[0] = 0; // Set state to wander to stop attacks
+			// 	NPC.Teleport(NPC.position,0,7); // Teleport to current position to make it look like teleporting away
+			// 	NPC.active = false; // Deactivate NPC
+        	// 	NPC.netUpdate = true; // Sync with multiplayer
+			// }
 		}
 
 		public override void ModifyHitPlayer(Player target, ref Player.HurtModifiers modifiers)
@@ -136,27 +139,36 @@ namespace PrototypeMod.Content.NPCs
 
 		public override void FindFrame(int frameHeight)
 		{
+			// TODO: Make frames change
 			// Count up and change the frame appropriately
 			NPC.frameCounter++;
 
 			if(NPC.frameCounter >= 6.0f)
 			{
-				if (frameHeight >= 360)
+				if (frameHeight >= FRAME_LIMIT)
 					NPC.frame.Y = 0;
 				else
-					NPC.frame.Y += frameHeight;
+					NPC.frame.Y = frameHeight + FRAME_PLUS;
+				NPC.frameCounter = 0;
 			}
 
 		}
 
         public override void AI()
         {
+			/*
+			TODO:
+			- Change direction to be dynamic based on player
+			- Change out of wander state
+			- Fix teleport
+			*/
+
             // AI operates via state machine
             switch (NPC.ai[0])
             {
                 case 0: // Wander State
                     NPC.velocity.X = 0.5f;
-                    if (Microsoft.Xna.Framework.Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 30f * BLOCK) // If a player is 30 blocks away or less:
+                    if (Microsoft.Xna.Framework.Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 30.0f * BLOCK) // If a player is 30 blocks away or less:
                     {
                         NPC.ai[1] = 0f; // Reset warp timer
                         NPC.ai[0] = 1f; // Set state to Attack State
@@ -175,6 +187,7 @@ namespace PrototypeMod.Content.NPCs
                     if (Microsoft.Xna.Framework.Vector2.Distance(Main.player[NPC.target].Center, NPC.Center) <= 5f * BLOCK)
                     {
                         // Alondite attack code
+						// UPDATE: Not required for now, may add a projectile later
                     } else
                     {
                         NPC.ai[1]++; // Terraria operates at a constant 60fps and counts frames for time. Therefore, 60 = 1 second.
@@ -208,7 +221,7 @@ namespace PrototypeMod.Content.NPCs
 								NPC.ai[1] = 0f;
 								NPC.velocity.X = 1.0f;
 							}
-                        }
+                        } 
                     }
                     break;
                     
